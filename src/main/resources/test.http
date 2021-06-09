@@ -1,0 +1,16 @@
+GET http://localhost:8080/
+Accept: application/json
+
+###
+POST http://localhost:8080/admin/api/v1/user/add
+Content-Type: application/json
+
+{
+  "name": "jenkins",
+  "login": "jenkins@mail.com",
+  "password": "1234"
+}
+
+
+
+###
