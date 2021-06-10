@@ -1,7 +1,7 @@
 package ru.sberbank.kuzin19190813.authorizationadminapi.util.converter;
 
-public interface Converter<M, D> {
-    M to(D dto);
+public interface Converter<T, F> {
+    T to(F from);
 
-    D from(M entity);
+    F from(T to);
 }

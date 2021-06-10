@@ -13,7 +13,7 @@ import java.util.Set;
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Table(name = "SBER_USER")
-@Entity(name = "SBER_USER")
+@Entity
 public class UserDTO {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)

@@ -8,6 +8,11 @@ import lombok.experimental.FieldDefaults;
 @Data
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class OkBody {
+public class OkBody implements Body {
     String message;
+
+    @Override
+    public String toString() {
+        return String.format("{\"message\":\"%s\"}", message);
+    }
 }

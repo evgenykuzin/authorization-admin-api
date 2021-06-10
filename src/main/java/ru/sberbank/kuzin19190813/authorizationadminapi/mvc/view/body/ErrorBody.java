@@ -8,6 +8,6 @@ import lombok.experimental.FieldDefaults;
 @Data
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class ErrorBody {
+public class ErrorBody implements Body {
     String message;
 }

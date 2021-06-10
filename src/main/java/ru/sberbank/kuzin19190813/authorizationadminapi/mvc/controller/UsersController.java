@@ -1,70 +1,85 @@
 package ru.sberbank.kuzin19190813.authorizationadminapi.mvc.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.sberbank.kuzin19190813.authorizationadminapi.exceptions.ApiException;
-import ru.sberbank.kuzin19190813.authorizationadminapi.exceptions.NotCompatibleRoleException;
 import ru.sberbank.kuzin19190813.authorizationadminapi.mvc.model.role.Role;
-import ru.sberbank.kuzin19190813.authorizationadminapi.mvc.view.body.AddUserBody;
-import ru.sberbank.kuzin19190813.authorizationadminapi.mvc.view.body.OkBody;
-import ru.sberbank.kuzin19190813.authorizationadminapi.mvc.view.body.SetRoleBody;
-import ru.sberbank.kuzin19190813.authorizationadminapi.mvc.view.body.UpdatePasswordBody;
+import ru.sberbank.kuzin19190813.authorizationadminapi.mvc.service.UserServiceImpl;
+import ru.sberbank.kuzin19190813.authorizationadminapi.mvc.view.body.*;
 import ru.sberbank.kuzin19190813.authorizationadminapi.mvc.view.response.ErrorResponse;
 import ru.sberbank.kuzin19190813.authorizationadminapi.mvc.view.response.OkResponse;
-import ru.sberbank.kuzin19190813.authorizationadminapi.service.UserService;
+import ru.sberbank.kuzin19190813.authorizationadminapi.util.converter.UserBodyConverter;
 
-@RestController
-        //("/user")
+import java.util.Set;
+
+@RestController("/users")
+@RequestMapping("/")
 public class UsersController {
-    UserService userService;
+    UserServiceImpl userServiceImpl;
 
     @Autowired
-    public UsersController(UserService userService) {
-        this.userService = userService;
+    public UsersController(UserServiceImpl userServiceImpl) {
+        this.userServiceImpl = userServiceImpl;
+    }
+
+    @RequestMapping(value = "/", method = RequestMethod.GET)
+    public String index() {
+        return "OK";
     }
 
     @RequestMapping(value = "/ping", method = RequestMethod.GET)
-    public ResponseEntity<OkBody> ping() {
+    public OkResponse ping() {
         System.out.println("ping!");
-        return new OkResponse("ping success");
+        return new OkResponse();
     }
 
     @GetMapping("/{userId}/block")
-    public @ResponseBody ResponseEntity<?> blockUser(@PathVariable Long userId) {
+    public @ResponseBody ResponseEntity<? extends Body> blockUser(@PathVariable Long userId) {
         return addRole(new SetRoleBody(userId, Role.BLOCKED));
     }
 
-    @PostMapping("/role/add")
-    public @ResponseBody ResponseEntity<?> addRole(SetRoleBody setRoleBody) {
-        return changeRoles(setRoleBody, userService::addRole);
+    @PostMapping("/roles/add")
+    public @ResponseBody ResponseEntity<? extends Body> addRole(@RequestBody SetRoleBody setRoleBody) {
+        return changeRoles(setRoleBody, userServiceImpl::addRole);
     }
 
-    @PostMapping("/role/remove")
-    public @ResponseBody ResponseEntity<?> removeRole(SetRoleBody setRoleBody) {
-        return changeRoles(setRoleBody, userService::removeRole);
+    @PostMapping("/roles/remove")
+    public @ResponseBody ResponseEntity<? extends Body> removeRole(@RequestBody SetRoleBody setRoleBody) {
+        return changeRoles(setRoleBody, userServiceImpl::removeRole);
     }
 
     @PostMapping("/update-password")
-    public @ResponseBody ResponseEntity<?> setRole(UpdatePasswordBody updatePasswordBody) {
+    public @ResponseBody ResponseEntity<? extends Body> setRole(@RequestBody UpdatePasswordBody updatePasswordBody) {
         return executeResponse(() -> {
             String newPass = updatePasswordBody.getNewPassword();
             Long userId = updatePasswordBody.getUserId();
-            userService.changeUserPassword(userId, newPass);
+            userServiceImpl.changeUserPassword(userId, newPass);
         });
     }
 
     @PostMapping("/add")
-    public @ResponseBody ResponseEntity<?> addUser(AddUserBody addUserBody) {
+    public @ResponseBody ResponseEntity<? extends Body> addUser(@RequestBody AddUserBody addUserBody) {
         return executeResponse(() -> {
-            String name = addUserBody.getName();
-            String login = addUserBody.getLogin();
-            String password = addUserBody.getPassword();
-            userService.addUser(name, login, password);
+            userServiceImpl.addUser(new UserBodyConverter().from(addUserBody));
         });
     }
 
-    private ResponseEntity<?> changeRoles(SetRoleBody setRoleBody, ChangeRoleBiConsumer changeRoleBiConsumer) {
+    @GetMapping("{userId}/roles/")
+    public @ResponseBody ResponseEntity<? extends Body> getRoles(@PathVariable Long userId) {
+        try {
+            Set<Role> roles = userServiceImpl.getRoles(userId);
+            RolesBody rolesBody = new RolesBody();
+            rolesBody.setRoles(roles);
+            return new ResponseEntity<>(rolesBody, HttpStatus.OK);
+        } catch (ApiException e) {
+            e.printStackTrace();
+            return new ErrorResponse(e.getMessage());
+        }
+    }
+
+    private ResponseEntity<? extends Body> changeRoles(SetRoleBody setRoleBody, ChangeRoleBiConsumer changeRoleBiConsumer) {
         return executeResponse(() -> {
             Long userId = setRoleBody.getUserId();
             Role role = setRoleBody.getRole();
@@ -72,8 +87,7 @@ public class UsersController {
         });
     }
 
-    public ResponseEntity<?> executeResponse(Executor executor) {
-        System.out.println("helloooo");
+    public ResponseEntity<? extends Body> executeResponse(Executor executor) {
         try {
             executor.execute();
         } catch (ApiException e) {
@@ -83,11 +97,13 @@ public class UsersController {
         return new OkResponse();
     }
 
+    @FunctionalInterface
     private interface Executor {
         void execute() throws ApiException;
     }
 
+    @FunctionalInterface
     private interface ChangeRoleBiConsumer {
-        void change(Long userId, Role role) throws NotCompatibleRoleException;
+        void change(Long userId, Role role) throws ApiException;
     }
 }
